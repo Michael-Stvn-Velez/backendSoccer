@@ -1,6 +1,5 @@
 const authService = require('../services/authService');
-const User = require('../models/User');
-const emailService = require('../services/emailService');
+
 
 // Controlador para registrar un nuevo usuario
 exports.registerInitial = async (req, res, next) => {
@@ -26,7 +25,7 @@ exports.confirmAccount = async (req, res, next) => {
 exports.completeProfile = async (req, res, next) => {
   try {
     const result = await authService.completeUserProfile(req.body);
-    res.status(200).json(result);
+    res.status(200).json(result); // Ahora result contiene { token, message }
   } catch (error) {
     next(error);
   }
@@ -62,29 +61,11 @@ exports.changePassword = async (req, res, next) => {
   }
 };
 
-exports.resendConfirmationCode = async (req, res) => {
+exports.resendConfirmationCode = async (req, res, next) => {
   try {
-      const { email, names } = req.body;
-
-      // Buscar usuario por email
-      const user = await User.findOne({ email });
-      if (!user) {
-          return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
-
-      // Generar un nuevo código de confirmación
-      const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      user.confirmationCode = confirmationCode;
-
-      // Guardar el usuario con el nuevo código
-      await user.save({ validateModifiedOnly: true });
-
-      // Llamar al servicio de email como en el registro
-      await emailService.sendConfirmationEmail(email, names, confirmationCode);
-
-      res.status(200).json({ message: 'Código de confirmación reenviado' });
+      const result = await authService.resendUserConfirmationCode(req.body);
+      res.status(200).json(result);
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error al reenviar el código de confirmación' });
+    next(error);
   }
 };

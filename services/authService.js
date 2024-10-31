@@ -1,12 +1,16 @@
 const User = require('../models/User');
 const AppError = require('../utils/AppError'); 
-const emailService = require('../services/emailService');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { sendConfirmationEmail } = require('./emailService');
+const { sendConfirmationEmail, sendPasswordResetEmail } = require('./emailService');
 const { generarContrasenaTemporal } = require('../utils/helpers');
 const generateToken = require('../utils/token');
 const encryption = require('../utils/encryption');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET; // Lee el secreto desde process.env
+if (!JWT_SECRET) {
+  throw new Error('Falta JWT_SECRET en las variables de entorno');
+}
 
 // Registro de un nuevo usuario
 exports.registerUser = async ({ names, email, password, firstSurname }) => {
@@ -27,7 +31,7 @@ exports.registerUser = async ({ names, email, password, firstSurname }) => {
 
   await user.save();
 
-  await emailService.sendConfirmationEmail(email, names, confirmationCode); // Usa el servicio de email
+  await sendConfirmationEmail(email, names, confirmationCode); // Usa la función directamente
 
   return { message: 'Registro inicial exitoso, revisa tu correo para confirmar tu cuenta' };
 };
@@ -66,7 +70,8 @@ exports.completeUserProfile = async ({ email, secondSurname, dateofBirth, role, 
     throw new Error('La cuenta no ha sido verificada');
   }
 
-  await User.findByIdAndUpdate(
+  // Actualiza el perfil del usuario
+  const updatedUser = await User.findByIdAndUpdate(
     user._id,
     {
       secondSurname,
@@ -78,7 +83,13 @@ exports.completeUserProfile = async ({ email, secondSurname, dateofBirth, role, 
     { new: true }
   );
 
-  return { message: 'Perfil completado exitosamente' };
+  // Genera un token para el usuario actualizado
+  const token = jwt.sign({ userId: updatedUser._id, email: updatedUser.email, role: updatedUser.role }, JWT_SECRET, {
+    expiresIn: '1h', // Configura el tiempo de expiración según tu preferencia
+  });
+
+  // Devuelve el token y un mensaje de éxito
+  return { token, message: 'Perfil completado exitosamente' };
 };
 
 // Inicio de sesión de usuario
@@ -113,7 +124,7 @@ exports.resetUserPassword = async ({ email }) => {
 
   await User.findByIdAndUpdate(user._id, { password: hashedPassword });
 
-  await emailService.sendPasswordResetEmail(email, user.names, temporaryPassword); // Usa el servicio de email
+  await sendPasswordResetEmail(email, user.names, temporaryPassword); // Usa la función directamente
 
   return { message: 'Contraseña temporal enviada al correo' };
 };
@@ -134,4 +145,20 @@ exports.changeUserPassword = async ({ email, temporaryPassword, newPassword }) =
   await User.findByIdAndUpdate(user._id, { password: hashedPassword });
 
   return { message: 'Contraseña cambiada exitosamente' };
+};
+
+exports.resendUserConfirmationCode = async ({ email, names }) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+  
+  const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  user.confirmationCode = confirmationCode;
+
+  await user.save({ validateModifiedOnly: true });
+
+  await sendConfirmationEmail(email, names, confirmationCode); // Usa la función correcta para enviar el código de confirmación
+
+  return { message: 'Código de confirmación reenviado' };
 };

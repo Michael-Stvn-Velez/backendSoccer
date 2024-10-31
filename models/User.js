@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const UserSchema = new mongoose.Schema({
   names: {
     type: String,
-    required: true,
+    required: false,
     validate: {
       validator: function (v) {
         return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s'-]+$/.test(v); // Permitir letras con tildes, espacios, apóstrofes y guiones
@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
   },
   firstSurname: {
     type: String,
-    required: true,
+    required: false,
     validate: {
       validator: function (v) {
         return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s'-]+$/.test(v); // Permitir letras con tildes, espacios, apóstrofes y guiones
