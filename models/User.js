@@ -5,32 +5,17 @@ const UserSchema = new mongoose.Schema({
   names: {
     type: String,
     required: false,
-    validate: {
-      validator: function (v) {
-        return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s'-]+$/.test(v); // Permitir letras con tildes, espacios, apóstrofes y guiones
-      },
-      message: props => `${props.value} no es un nombre válido. Solo puede contener letras, espacios, apóstrofes, guiones y tildes.`
-    }
+    maxLength: 50,
   },
   firstSurname: {
     type: String,
     required: false,
-    validate: {
-      validator: function (v) {
-        return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s'-]+$/.test(v); // Permitir letras con tildes, espacios, apóstrofes y guiones
-      },
-      message: props => `${props.value} no es un apellido válido. Solo puede contener letras, espacios, apóstrofes, guiones y tildes.`
-    }
+    maxLength: 50,
   },
   secondSurname: {
     type: String,
     required: false,
-    validate: {
-      validator: function (v) {
-        return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s'-]*$/.test(v); // Permitir letras con tildes, espacios, apóstrofes y guiones (puede ser vacío)
-      },
-      message: props => `${props.value} no es un apellido válido. Solo puede contener letras, espacios, apóstrofes, guiones y tildes.`
-    }
+    maxLength: 50,
   },
   dateofBirth: {
     type: Date,
@@ -71,6 +56,7 @@ const UserSchema = new mongoose.Schema({
   numberIdentity: {
     type: String,
     required: false,
+    maxLength: 30,
   },
   typeIdentity: {
     type: String,
@@ -87,9 +73,10 @@ const UserSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    required: true
   }
-});
+}, { timestamps: true }); // Agrega timestamps automáticos para `createdAt` y `updatedAt`
 
 // Middleware para cifrar la contraseña antes de guardarla
 UserSchema.pre('save', async function (next) {
