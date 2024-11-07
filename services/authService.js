@@ -4,9 +4,9 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { sendConfirmationEmail, sendPasswordResetEmail } = require('./emailService');
 const { generarContrasenaTemporal } = require('../utils/helpers');
-const generateToken = require('../utils/token');
 const encryption = require('../utils/encryption');
 const jwt = require('jsonwebtoken');
+const { generateToken } = require('../utils/token');
 const JWT_SECRET = process.env.JWT_SECRET; // Lee el secreto desde process.env
 if (!JWT_SECRET) {
   throw new Error('Falta JWT_SECRET en las variables de entorno');
@@ -108,7 +108,9 @@ exports.loginUser = async ({ email, password }) => {
     throw new AppError('Contraseña incorrecta', 400);
   }
 
-  const token = generateToken(user._id);
+  // Genera el token incluyendo el ID del usuario, el email y los roles
+  const token = generateToken(user); // Pasa el objeto `user` completo
+
   return { token, name: `${user.names} ${user.firstSurname}` };
 };
 
@@ -162,3 +164,20 @@ exports.resendUserConfirmationCode = async ({ email, names }) => {
 
   return { message: 'Código de confirmación reenviado' };
 };
+
+exports.addRoleToSelf = async (userId, newRole) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  // Verifica que el rol aún no esté asignado
+  if (!user.roles.includes(newRole)) {
+    user.roles.push(newRole);
+    await user.save({ validateModifiedOnly: true }); // Guardar solo los campos modificados y no validar todo
+  } else {
+    throw new AppError(`Ya tienes el rol ${newRole}`, 400);
+  }
+
+  return { message: `Rol ${newRole} agregado exitosamente a tu perfil` };
+}; 

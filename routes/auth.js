@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const authController = require('../controllers/authController');
 const { validate } = require('../middlewares/validation');
-
+const { verifyToken } = require('../utils/token');
 const router = express.Router();
 
 // Ruta para registrar un nuevo usuario
@@ -13,7 +13,12 @@ router.post('/register',
       .escape()
       .notEmpty().withMessage('El nombre es obligatorio')
       .isLength({ max: 50 }).withMessage('El nombre debe tener como máximo 50 caracteres'),
-    body('email')
+    body('firstSurname')
+      .trim()
+      .escape()
+      .notEmpty().withMessage('El apellido es obligatorio')
+      .isLength({ max: 50 }).withMessage('El apellido debe tener como máximo 50 caracteres'),
+      body('email')
       .isEmail().withMessage('Debe ser un correo electrónico válido')
       .normalizeEmail(),
     body('password')
@@ -100,5 +105,9 @@ router.post('/resend-confirmation-code',
   validate,
   authController.resendConfirmationCode
 );
+
+router.put('/add-role', verifyToken, async (req, res, next) => {
+  authController.addRoleToSelf(req, res, next);
+});
 
 module.exports = router;

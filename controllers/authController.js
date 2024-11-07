@@ -86,3 +86,21 @@ exports.resendConfirmationCode = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.addRoleToSelf = async (req, res, next) => {
+  console.log('req.user en addRoleToSelf:', req.user); // Confirmar el contenido de req.user
+  const userId = req.user?.userId; // Usa el operador opcional para evitar errores si `req.user` es undefined
+
+  if (!userId) {
+    return res.status(400).json({ message: 'userId no encontrado en req.user' });
+  }
+
+  const { role } = req.body;
+
+  try {
+    const result = await authService.addRoleToSelf(userId, role);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
