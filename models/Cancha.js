@@ -13,8 +13,31 @@ const CanchaSchema = new mongoose.Schema({
   },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Relación con el usuario propietario
+    ref: 'User',
     required: true,
+  },
+  numeroContacto: {
+    type: String,
+    maxLength: 30,
+    required: false,
+  },
+  rutaGoogleMaps: {
+    type: String,
+    required: false,
+  },
+  foto: {
+    type: String, 
+    required: false,
+  },
+  tipo: {
+    type: String,
+    enum: ['cesped', 'cesped sintetico', 'arena'], 
+    required: false,
+  },
+  capacidad: {
+    type: String,
+    enum: ['futbol 5', 'futbol 6', 'futbol 7', 'futbol 8', 'futbol 9', 'futbol 10', 'futbol 11'], 
+    required: false,
   },
   createdAt: {
     type: Date,

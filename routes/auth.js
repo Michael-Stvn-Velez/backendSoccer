@@ -18,14 +18,14 @@ router.post('/register',
       .escape()
       .notEmpty().withMessage('El apellido es obligatorio')
       .isLength({ max: 50 }).withMessage('El apellido debe tener como máximo 50 caracteres'),
-      body('email')
+    body('email')
       .isEmail().withMessage('Debe ser un correo electrónico válido')
       .normalizeEmail(),
     body('password')
       .isLength({ min: 8 }).withMessage('La contraseña debe tener al menos 8 caracteres')
       .matches(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/).withMessage('La contraseña debe incluir al menos una letra y un número')
   ],
-  validate, // Middleware de validación reutilizable
+  validate,
   authController.registerInitial
 );
 
@@ -55,7 +55,7 @@ router.post('/register-complete',
   authController.completeProfile
 );
 
-// Ruta para iniciar sesión
+// Ruta para iniciar sesión (devuelve access token y refresh token)
 router.post('/login',
   [
     body('email').isEmail().withMessage('Debe ser un correo electrónico válido').normalizeEmail(),
@@ -64,6 +64,12 @@ router.post('/login',
   validate,
   authController.login
 );
+
+// Ruta para renovar el access token
+router.post('/refresh-token', authController.refreshToken);
+
+// Ruta para cerrar sesión y revocar el refresh token
+router.post('/logout', verifyToken, authController.logout);
 
 // Ruta para restablecer la contraseña
 router.post('/reset-password',
@@ -74,7 +80,7 @@ router.post('/reset-password',
   authController.resetPassword
 );
 
-// Ruta para cambiar la contraseña con una temporal
+// Ruta para cambiar la contraseña utilizando una temporal
 router.post('/change-password',
   [
     body('email').isEmail().withMessage('Debe ser un correo electrónico válido').normalizeEmail(),
@@ -106,8 +112,7 @@ router.post('/resend-confirmation-code',
   authController.resendConfirmationCode
 );
 
-router.put('/add-role', verifyToken, async (req, res, next) => {
-  authController.addRoleToSelf(req, res, next);
-});
+// Ruta para añadir un rol adicional al usuario (solo usuarios autenticados)
+router.put('/add-role', verifyToken, authController.addRoleToSelf);
 
 module.exports = router;

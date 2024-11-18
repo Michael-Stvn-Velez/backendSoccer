@@ -5,14 +5,19 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
+const path = require('path');
 const errorHandler = require('./middlewares/errorHandler');
 const User = require('./models/User');
 
-// Importar las rutas de autenticación y gestión de canchas
+// Importación de rutas
 const authRoutes = require('./routes/auth');
 const canchas = require('./routes/canchas');
+const userRoutes = require('./routes/user');
 
 const app = express();
+
+// Configuración para confiar en el proxy (necesario para express-rate-limit)
+app.set('trust proxy', 1);
 
 // Middleware de seguridad de cabeceras HTTP
 app.use(helmet());
@@ -20,8 +25,12 @@ app.use(helmet());
 // Middleware para analizar JSON
 app.use(express.json());
 
-// Configuración de CORS
-app.use(cors());
+// Configuración de CORS general para todo el servidor
+app.use(cors({
+  origin: 'http://localhost:3000', // URL de tu frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Configuración del limitador de solicitudes
 const limiter = rateLimit({
@@ -32,13 +41,17 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Conexión a MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('Conectado a MongoDB'))
   .catch(err => console.error('Error al conectar a MongoDB:', err));
 
-// Rutas de autenticación (sin `verifyToken` para permitir inicio de sesión y registro)
+// Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/canchas', canchas);
+app.use('/api/user', userRoutes);
+
+// Hacer pública la carpeta 'uploads' para que las imágenes sean accesibles sin configuración adicional
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Middleware de manejo de errores
 app.use(errorHandler);
@@ -48,7 +61,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Tarea programada: Eliminar usuarios no confirmados
+// Tarea programada para eliminar usuarios no confirmados
 cron.schedule('0 0 * * *', async () => {
   console.log('Ejecutando trabajo programado diario para eliminar usuarios no confirmados...');
   

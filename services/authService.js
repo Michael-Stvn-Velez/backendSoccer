@@ -6,8 +6,10 @@ const { sendConfirmationEmail, sendPasswordResetEmail } = require('./emailServic
 const { generarContrasenaTemporal } = require('../utils/helpers');
 const encryption = require('../utils/encryption');
 const jwt = require('jsonwebtoken');
-const { generateToken } = require('../utils/token');
+const { generateAccessToken, generateRefreshToken } = require('../utils/token');
 const JWT_SECRET = process.env.JWT_SECRET; // Lee el secreto desde process.env
+
+
 if (!JWT_SECRET) {
   throw new Error('Falta JWT_SECRET en las variables de entorno');
 }
@@ -84,12 +86,10 @@ exports.completeUserProfile = async ({ email, secondSurname, dateofBirth, role, 
   );
 
   // Genera un token para el usuario actualizado
-  const token = jwt.sign({ userId: updatedUser._id, email: updatedUser.email, role: updatedUser.role }, JWT_SECRET, {
-    expiresIn: '1h', // Configura el tiempo de expiración según tu preferencia
-  });
+  const accessToken = generateAccessToken(updatedUser);
 
   // Devuelve el token y un mensaje de éxito
-  return { token, message: 'Perfil completado exitosamente' };
+  return { accessToken, message: 'Perfil completado exitosamente' };
 };
 
 // Inicio de sesión de usuario
@@ -109,9 +109,14 @@ exports.loginUser = async ({ email, password }) => {
   }
 
   // Genera el token incluyendo el ID del usuario, el email y los roles
-  const token = generateToken(user); // Pasa el objeto `user` completo
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
 
-  return { token, name: `${user.names} ${user.firstSurname}` };
+  // Guarda el refresh token en la base de datos
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  return { accessToken, refreshToken, name: `${user.names} ${user.firstSurname}` };
 };
 
 // Restablecimiento de contraseña mediante una contraseña temporal
@@ -181,3 +186,28 @@ exports.addRoleToSelf = async (userId, newRole) => {
 
   return { message: `Rol ${newRole} agregado exitosamente a tu perfil` };
 }; 
+
+exports.refreshToken = async (refreshToken) => {
+  const decoded = verifyRefreshToken(refreshToken);
+  if (!decoded) {
+    throw new AppError('Refresh token inválido o expirado', 403);
+  }
+
+  const user = await User.findById(decoded.userId);
+  if (!user || user.refreshToken !== refreshToken) {
+    throw new AppError('Refresh token no válido', 403);
+  }
+
+  const newAccessToken = generateAccessToken(user);
+  return { accessToken: newAccessToken };
+};
+
+// Función para cerrar sesión y revocar el refresh token
+exports.logout = async (userId) => {
+  const user = await User.findById(userId);
+  if (user) {
+    user.refreshToken = null;
+    await user.save();
+  }
+  return { message: 'Sesión cerrada exitosamente' };
+};

@@ -1,6 +1,8 @@
 const { validationResult } = require('express-validator');
 const authService = require('../services/authService');
 const AppError = require('../utils/AppError');
+const { generateAccessToken, verifyRefreshToken } = require('../utils/token');
+const User = require('../models/User');
 
 // Función auxiliar para manejar errores de validación
 const handleValidationErrors = (req) => {
@@ -13,7 +15,7 @@ const handleValidationErrors = (req) => {
 // Controlador para registrar un nuevo usuario
 exports.registerInitial = async (req, res, next) => {
   try {
-    handleValidationErrors(req); // Validar errores de entrada
+    handleValidationErrors(req);
     const result = await authService.registerUser(req.body);
     res.status(201).json(result);
   } catch (error) {
@@ -87,9 +89,10 @@ exports.resendConfirmationCode = async (req, res, next) => {
   }
 };
 
+// Controlador para agregar un rol al usuario autenticado
 exports.addRoleToSelf = async (req, res, next) => {
-  console.log('req.user en addRoleToSelf:', req.user); // Confirmar el contenido de req.user
-  const userId = req.user?.userId; // Usa el operador opcional para evitar errores si `req.user` es undefined
+  console.log('req.user en addRoleToSelf:', req.user);
+  const userId = req.user?.userId;
 
   if (!userId) {
     return res.status(400).json({ message: 'userId no encontrado en req.user' });
@@ -99,6 +102,30 @@ exports.addRoleToSelf = async (req, res, next) => {
 
   try {
     const result = await authService.addRoleToSelf(userId, role);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Controlador para renovar el token de acceso
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) throw new AppError('Refresh token no proporcionado', 401);
+
+    const result = await authService.refreshToken(refreshToken);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Controlador para cerrar sesión y revocar el refresh token
+exports.logout = async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    const result = await authService.logout(userId);
     res.status(200).json(result);
   } catch (error) {
     next(error);
